@@ -1,18 +1,58 @@
-import React, { useState } from 'react';
+import { useEffect, useState } from "react";
 
-import GooglePlacesAutocomplete from 'react-google-places-autocomplete';
+import GooglePlacesAutocomplete from "react-google-places-autocomplete";
 
+import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/use-toast";
 import {
+  AI_PROMPT,
   SelectBudgetOptions,
   SelectTravelsList,
-} from '@/constants/options';
+} from "@/constants/options";
 
 function CreateTrip() {
   const [place, setPlace] = useState();
 
+  const [fromData, setFromData] = useState({});
+
+  const handleInputChange = (name, value) => {
+    setFromData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  useEffect(() => {
+    console.log(fromData);
+  }, [fromData]);
+
+  const OnGenrateItineary = () => {
+    if (
+      fromData?.noOfDays > 5 ||
+      !fromData?.location ||
+      !fromData?.budget ||
+      !fromData?.travelWith
+    ) {
+      toast.error("Please fill all the details correctly.");
+      return;
+    }
+
+    const FINAL_PROMPT = AI_PROMPT.replace(
+      "{location}",
+      fromData?.location?.label,
+    )
+      .replace("{totalDays}", fromData?.noOfDays)
+      .replace("{travelWith}", fromData?.travelWith)
+      .replace("{budget}", fromData?.budget);
+
+    comsole.log(FINAL_PROMPT);
+  };
+
   return (
     <div className="- sm:px-10 md:px-32 lg:px-56  px-5 xl:px-72 mt-10">
-      <h2 className="font-bold text-3xl">Tell us your travel preferences</h2>
+      <h2 className="font-bold text-3xl">
+        Tell us your travel preferences 🏕️ 🌴
+      </h2>
       <p className="mt-3 text-gray-500 text-xl">
         Just provide some basic information, and our trip planner will generate
         a customized itinerary based on your preferences.
@@ -29,7 +69,7 @@ function CreateTrip() {
               value: place,
               onChange: (v) => {
                 setPlace(v);
-                console.log(v);
+                handleInputChange("location", v);
               },
             }}
           />
@@ -42,18 +82,24 @@ function CreateTrip() {
           <input
             placeholder="Ex. 3"
             type="number"
-            className="w-full rounded-lg border p-4 text-xl placeholder:text-xl"
+            className="w-full rounded-lg border p-4 text-base placeholder:text-base"
+            onChange={(e) => handleInputChange("noOfDays", e.target.value)}
           />
         </div>
       </div>
 
       <div>
-        <h2 className="font-bold text-3xl">What is your Budget?</h2>
+        <h2 className="text-xl my-3 font-medium">What is your Budget?</h2>
         <div className="grid grid-cols-3 gap-5 mt-5">
           {SelectBudgetOptions.map((item, index) => (
             <div
               key={index}
-              className="p-4 border cussor pointer rounded-lg hover:shadow"
+              onClick={() => handleInputChange("budget", item.title)}
+              className={`p-4 border cursor-pointer rounded-lg hover:shadow ${
+                fromData?.budget === item.title
+                  ? "shadow-lg border-black ring-2 ring-black"
+                  : ""
+              }`}
             >
               <h2 className="text-4xl ">{item.icon}</h2>
               <h2 className="font-bold text-lg">{item.title}</h2>
@@ -64,12 +110,19 @@ function CreateTrip() {
       </div>
 
       <div>
-        <h2 className="font-bold text-3xl">What is your Budget?</h2>
+        <h2 className="text-xl my-3 font-medium">
+          Who do you plan on travelling with on your next adventure?
+        </h2>
         <div className="grid grid-cols-3 gap-5 mt-5">
           {SelectTravelsList.map((item, index) => (
             <div
               key={index}
-              className="p-4 border cussor pointer rounded-lg hover:shadow"
+              onClick={() => handleInputChange("travelWith", item.people)}
+              className={`p-4 border cursor-pointer rounded-lg hover:shadow ${
+                fromData?.travelWith === item.people
+                  ? "shadow-lg border-black ring-2 ring-black"
+                  : ""
+              }`}
             >
               <h2 className="text-4xl ">{item.icon}</h2>
               <h2 className="font-bold text-lg">{item.title}</h2>
@@ -77,6 +130,10 @@ function CreateTrip() {
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="my-10 justify-end flex">
+        <Button onClick={OnGenrateItineary}>Generate Itinerary</Button>
       </div>
     </div>
   );
