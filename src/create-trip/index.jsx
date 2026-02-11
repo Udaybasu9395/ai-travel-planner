@@ -1,19 +1,34 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from 'react';
 
-import GooglePlacesAutocomplete from "react-google-places-autocomplete";
+import axios from 'axios';
+import GooglePlacesAutocomplete from 'react-google-places-autocomplete';
+import { FcGoogle } from 'react-icons/fc';
 
-import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/use-toast";
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+} from '@/components/ui/dialog';
+import { toast } from '@/components/ui/use-toast';
 import {
   AI_PROMPT,
   SelectBudgetOptions,
   SelectTravelsList,
-} from "@/constants/options";
+} from '@/constants/options';
+import { chatSession } from '@/service/AIModal';
+import { useGoogleLogin } from '@react-oauth/google';
 
 function CreateTrip() {
   const [place, setPlace] = useState();
 
   const [fromData, setFromData] = useState({});
+  const [openDialog, setOpenDialog] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleInputChange = (name, value) => {
     setFromData((prev) => ({
@@ -26,7 +41,21 @@ function CreateTrip() {
     console.log(fromData);
   }, [fromData]);
 
-  const OnGenrateItineary = () => {
+  const login = useGoogleLogin({
+    onSuccess: (codeResp) => GetUserProfile(codeResp),
+    onError: (error) => console.log(error),
+  });
+
+  const OnGenrateItineary = async () => {
+    const user = localStorage.getItem("user");
+
+    if (!user) {
+      setOpenDialog(true);
+      return;
+    }
+
+    setOpenDialog(false);
+
     if (
       fromData?.noOfDays > 5 ||
       !fromData?.location ||
@@ -36,7 +65,7 @@ function CreateTrip() {
       toast.error("Please fill all the details correctly.");
       return;
     }
-
+    setLoading(true);
     const FINAL_PROMPT = AI_PROMPT.replace(
       "{location}",
       fromData?.location?.label,
@@ -45,7 +74,41 @@ function CreateTrip() {
       .replace("{travelWith}", fromData?.travelWith)
       .replace("{budget}", fromData?.budget);
 
-    comsole.log(FINAL_PROMPT);
+    const result = await chatSession.sendMessage(FINAL_PROMPT);
+    setLoading(false);
+    SaveAiTrip(result?.response?.text());
+  };
+
+  const SaveAiTrip = async (TripData) => {
+    setLoading(true);
+    const user = JSON.parse(localStorage.getItem("user"));
+    const docId = Date.now().toString();
+    await setDoc(doc(db, "AITrips", docId), {
+      userSelection: fromData,
+      tripData: JSON.parse(TripData),
+      userEmail: user?.email,
+      id: docId,
+    });
+    setLoading(false);
+  };
+
+  const GetUserProfile = (tokenInfo) => {
+    axios
+      .get(
+        `https://www.googleapis.com/oauth2/v1/userinfo?access_token=${tokenInfo.access_token}`,
+        {
+          headers: {
+            Authorization: `Bearer ${tokenInfo.access_token}`,
+            Accept: "application/json",
+          },
+        },
+      )
+      .then((resp) => {
+        console.log(resp);
+        localStorage.setItem("user", JSON.stringify(resp.data));
+        setOpenDialog(false);
+        OnGenrateItineary();
+      });
   };
 
   return (
@@ -133,8 +196,32 @@ function CreateTrip() {
       </div>
 
       <div className="my-10 justify-end flex">
-        <Button onClick={OnGenrateItineary}>Generate Itinerary</Button>
+        <Button disabled={loading} onClick={OnGenrateItineary}>
+          {loading ? (
+            <AiOutlineLoading3Quarters className="h-7 w-7 animate-spin" />
+          ) : (
+            "Generate Itinerary"
+          )}
+        </Button>
       </div>
+
+      <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogDescription>
+              <img src="/logo.svg" />
+              <h2 className="font-bold text-lg mt-7">Sign In With Google</h2>
+              <p>Sign in to the App with Google Authentication securely</p>
+              <Button
+                onClick={login}
+                className="w-full mt-5 flex gap-4 items-center"
+              >
+                <FcGoogle className="h-7 w-7" /> Sign In With Google
+              </Button>
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

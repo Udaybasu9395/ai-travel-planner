@@ -1,15 +1,17 @@
-import "./index.css";
+import './index.css';
 
-import { StrictMode } from "react";
+import { StrictMode } from 'react';
 
-import { createRoot } from "react-dom/client";
-import { RouterProvider } from "react-router";
-import { createBrowserRouter } from "react-router-dom";
+import { createRoot } from 'react-dom/client';
+import { RouterProvider } from 'react-router';
+import { createBrowserRouter } from 'react-router-dom';
 
-import App from "./App.jsx";
-import Header from "./components/custom/Header";
-import Toaster from "./components/ui/toaster";
-import CreateTrip from "./create-trip";
+import { GoogleOAuthProvider } from '@react-oauth/google';
+
+import App from './App.jsx';
+import Header from './components/custom/Header';
+import Toaster from './components/ui/toaster';
+import CreateTrip from './create-trip';
 
 const router = createBrowserRouter([
   {
@@ -24,8 +26,10 @@ const router = createBrowserRouter([
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <Header />
-    <Toaster />
-    <RouterProvider router={router} />
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_AUTH_CLIENT_ID}>
+      <Header />
+      <Toaster />
+      <RouterProvider router={router} />
+    </GoogleOAuthProvider>
   </StrictMode>,
 );
